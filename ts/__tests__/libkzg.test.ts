@@ -4,7 +4,9 @@ import {
     genQuotientPolynominal,
     genProof,
     verify,
+    verifyViaEIP197,
     isValidPairing,
+    genVerifierContractParams,
     commit,
 } from '../'
 
@@ -77,6 +79,24 @@ describe('libkzg', () => {
                 yVal,
             )
             expect(isValid).toBeTruthy()
+
+            expect(
+                verifyViaEIP197(
+                    commitment,
+                    proof,
+                    xVal,
+                    yVal,
+                )
+            ).toBeTruthy()
+
+            console.log(
+                genVerifierContractParams(
+                    commitment,
+                    proof,
+                    xVal,
+                    yVal,
+                )
+            )
         })
 
         it('not verify an invalid KZG proof', () => {

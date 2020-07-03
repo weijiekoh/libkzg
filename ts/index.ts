@@ -155,7 +155,7 @@ const verify = (
     // SRS and the first 2 values from the G2 SRS
     debugger
     const aCommit = commit(a.toValues())
-    const xCommit = polyCommit(x.toValues(), G2, srs)
+    const xCommit = srs[1] //polyCommit(x.toValues(), G2, srs)
     const zCommit = polyCommit(z.toValues(), G2, srs)
 
     // To verify the proof, use the following equation:
@@ -179,11 +179,49 @@ const verify = (
     return ffjavascript.bn128.F12.eq(lhs, rhs)
 }
 
-// TODO: check that:
-// e(commitment - aCommitment, G2.g) == e(proof, xCommit - yCommit)
-// is equivalent to
-// e(commitment - aCommitment, G2.g) * e(-proof, xCommit) * e(proof, zCommit) == 1
-// as this is what the Solidity verifier needs to check
+const verifyViaEIP197 = (
+    commitment: Commitment,
+    proof: Proof,
+    index: number | bigint,
+    value: bigint,
+    p: bigint = FIELD_SIZE,
+) => {
+    // Check that:
+    // e(commitment - aCommitment, G2.g) == e(proof, xCommit - yCommit)
+    // which is equivalent to
+    // e(commitment - aCommitment, G2.g) * e(-proof, xCommit) * e(index * proof, G2.g) == 1
+    // which is equivalent to
+    // e((index * proof) + (commitment - aCommitment), G2.g) * e(-proof, xCommit) == 1
+    // as this is what the Solidity verifier needs to check
+    const field = galois.createPrimeField(p)
+    const srs = srsG2()
+
+    const a = field.newVectorFrom([value].map(BigInt))
+    const aCommit = commit(a.toValues())
+    const x = field.newVectorFrom([0, 1].map(BigInt))
+    const xCommit = polyCommit(x.toValues(), G2, srs)
+
+    const z = field.newVectorFrom([index].map(BigInt))
+    const zCommit = polyCommit(z.toValues(), G2, srs)
+
+    const inputs = [
+        {
+            G1: G1.affine(
+                G1.add(
+                    G1.mulScalar(proof, index),
+                    G1.sub(commitment, aCommit),
+                )
+            ),
+            G2: G2.g,
+        },
+        {
+            G1: G1.affine(G1.neg(proof)),
+            G2: xCommit,
+        },
+    ]
+
+    return isValidPairing(inputs)
+}
 
 const genVerifierContractParams = (
     commitment: Commitment,
@@ -192,11 +230,10 @@ const genVerifierContractParams = (
     value: bigint,
 ) => {
     return {
-        commitment,
-        proof: {
-            X: proof[0],
-            Y: proof[1],
-        },
+        commitmentX: commitment[0],
+        commitmentY: commitment[1],
+        proofX: proof[0],
+        proofY: proof[1],
         index,
         value,
     }
@@ -294,5 +331,7 @@ export {
     commit,
     genProof,
     verify,
+    verifyViaEIP197,
+    genVerifierContractParams,
     isValidPairing,
 }
