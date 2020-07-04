@@ -7,7 +7,9 @@
     "watch": "tsc --watch",
     "build": "tsc",
     "prepare": "npm run build",
-    "test": "jest --force-exit",
+    "ganache": "etherlime ganache --port 8545 --mnemonic 'candy maple cake sugar pudding cream honey rich smooth crumble sweet treat'",
+    "test": "jest --force-exit libkzg.test.ts",
+    "test-sol-verifier": "jest --force-exit solVerifier.test.ts",
     "test-debug": "node --inspect-brk ./node_modules/.bin/jest --testPathPattern=__tests__/"
   },
   "repository": {
@@ -21,6 +23,9 @@
     "@types/jest": "^26.0.3",
     "chai": "^4.2.0",
     "chai-as-promised": "^7.1.1",
+    "etherlime": "^2.3.3",
+    "etherlime-lib": "^1.2.3",
+    "ganache": "^6.4.4",
     "jest": "^26.1.0",
     "ts-jest": "^26.1.1",
     "typescript": "^3.9.5"

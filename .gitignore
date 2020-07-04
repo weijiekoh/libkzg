@@ -1,3 +1,4 @@
+.etherlime-store/
 compiled/*
 package-lock.json
 build/

@@ -7,6 +7,7 @@ import {
     verifyViaEIP197,
     isValidPairing,
     genVerifierContractParams,
+    genBabyJubField,
     commit,
 } from '../'
 
@@ -27,7 +28,7 @@ const mod = (n: any, m: any): BigInt => {
 
 import { babyJub } from 'circomlib'
 const prime = babyJub.p
-const field = galois.createPrimeField(prime)
+const field = genBabyJubField()
 const coefficients = [5, 0, 2, 1].map(BigInt)
 
 describe('libkzg', () => {
@@ -88,15 +89,6 @@ describe('libkzg', () => {
                     yVal,
                 )
             ).toBeTruthy()
-
-            console.log(
-                genVerifierContractParams(
-                    commitment,
-                    proof,
-                    xVal,
-                    yVal,
-                )
-            )
         })
 
         it('not verify an invalid KZG proof', () => {

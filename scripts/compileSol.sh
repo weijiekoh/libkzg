@@ -17,4 +17,4 @@ else
     SOLC_VERSION=0.5.16
 fi
 
-solc -o ./compiled/ ./sol/* --overwrite --optimize --bin --abi --bin-runtime
+npx etherlime compile --solcVersion=$SOLC_VERSION --buildDirectory=compiled --workingDirectory=sol --exportAbi --runs 200

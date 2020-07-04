@@ -52,7 +52,7 @@ library Pairing {
             switch success case 0 { invalid() }
         }
 
-        require(success,"pairing-add-failed");
+        require(success, "pairing-add-failed");
     }
 
     /*
@@ -73,7 +73,7 @@ library Pairing {
             // Use "invalid" to make gas estimation work
             switch success case 0 { invalid() }
         }
-        require (success,"pairing-mul-failed");
+        require (success, "pairing-mul-failed");
     }
 
     /* @return The result of computing the pairing check
@@ -125,7 +125,6 @@ contract Verifier {
     using Pairing for *;
 
     uint256 constant SNARK_SCALAR_FIELD = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
-    uint256 constant PRIME_Q = 21888242871839275222246405745257275088696311157297823662689037894645226208583;
 
     Pairing.G2Point g2Generator = Pairing.G2Point({
         X: [
@@ -139,9 +138,9 @@ contract Verifier {
 
     });
 
-    // These are test SRS values using a secret 1234
     Pairing.G1Point SRS_G1_0 = Pairing.G1Point({ X: 1, Y: 2 });
 
+    // A test SRS value using the secret 1234. Do not use it in production!
     Pairing.G2Point SRS_G2_1 = Pairing.G2Point({
         X: [
             uint256(20581924060851364827089112084266116502083385887431055789664064343317555539927), 
@@ -153,57 +152,84 @@ contract Verifier {
         ]
     });
 
+    /*
+     * Verifies a single-point evaluation of a polynominal using the KZG
+     * commitment scheme.
+     *    - p(X) is a polynominal
+     *    - _value = p(_index) 
+     *    - commitment = commit(p)
+     *    - proof = genProof(p, _index, _value)
+     * Returns true if and only if the following hold:
+     *     - e(commitment - commit([_value]), G2.g) == e(proof, commit([0, 1]) - zCommit)
+     * @param _commitmentX The X-coordinate of the commitment.
+     * @param _commitmentY The Y-coordinate of the commitment.
+     * @param _proofX The X-coordinate of the proof.
+     * @param _proofY The Y-coordinate of the proof.
+     * @param _index The x-value at which to evaluate the polynominal.
+     * @param _value The result of the polynominal evaluation.
+     */
     function verifyKZG(
-        uint256 commitmentX,
-        uint256 commitmentY,
-        uint256 proofX,
-        uint256 proofY,
-        uint256 index,
-        uint256 value
+        uint256 _commitmentX,
+        uint256 _commitmentY,
+        uint256 _proofX,
+        uint256 _proofY,
+        uint256 _index,
+        uint256 _value
     ) public view returns (bool) {
         // Make sure each parameter is less than the prime q
-        require(commitmentX < SNARK_SCALAR_FIELD, "Verifier.verifyKZG: commitmentX is out of range");
-        require(commitmentY < SNARK_SCALAR_FIELD, "Verifier.verifyKZG: commitmentY is out of range");
-        require(proofX < SNARK_SCALAR_FIELD, "Verifier.verifyKZG: proofX is out of range");
-        require(proofY < SNARK_SCALAR_FIELD, "Verifier.verifyKZG: proofY is out of range");
-        require(index < SNARK_SCALAR_FIELD, "Verifier.verifyKZG: index is out of range");
-        require(value < SNARK_SCALAR_FIELD, "Verifier.verifyKZG: value is out of range");
+        require(_commitmentX < SNARK_SCALAR_FIELD, "Verifier.verifyKZG: commitmentX is out of range");
+        require(_commitmentY < SNARK_SCALAR_FIELD, "Verifier.verifyKZG: commitmentY is out of range");
+        require(_proofX < SNARK_SCALAR_FIELD, "Verifier.verifyKZG: proofX is out of range");
+        require(_proofY < SNARK_SCALAR_FIELD, "Verifier.verifyKZG: proofY is out of range");
+        require(_index < SNARK_SCALAR_FIELD, "Verifier.verifyKZG: index is out of range");
+        require(_value < SNARK_SCALAR_FIELD, "Verifier.verifyKZG: value is out of range");
 
         // Check that 
-        // e(commitment - aCommitment, G2.g) == e(proof, xCommit - zCommit)
-        // which is equivalent to:
-        // e((index * proof) + (commitment - aCommitment), G2.g) * e(-proof, xCommit) == 1
+        //     e(commitment - aCommit, G2.g) == e(proof, xCommit - zCommit)
+        //     e(commitment - aCommit, G2.g) / e(proof, xCommit - zCommit) == 1
+        //     e(commitment - aCommit, G2.g) * e(proof, xCommit - zCommit) ^ -1 == 1
+        //     e(commitment - aCommit, G2.g) * e(-proof, xCommit - zCommit) == 1
+        // where:
+        //     aCommit = commit([_value]) = SRS_G1_0 * _value
+        //     xCommit = commit([0, 1]) = SRS_G2_1
+        //     zCommit = commit([_index]) = SRS_G2_1 * _index
 
-        // commitment - aCommitment
+        // To avoid having to perform an expensive operation in G2 to compute
+        // xCommit - zCommit, we instead check the equivalent equation:
+        //     e(commitment - aCommit, G2.g) * e(-proof, xCommit) * e(-proof, -zCommit) == 1
+        //     e(commitment - aCommit, G2.g) * e(-proof, xCommit) * e(proof, zCommit) == 1
+        //     e(commitment - aCommit, G2.g) * e(-proof, xCommit) * e(index * proof, G2.g) == 1
+        //     e((index * proof) + (commitment - aCommit), G2.g) * e(-proof, xCommit) == 1
+
+
+        // Compute commitment - aCommitment
         Pairing.G1Point memory commitmentMinusA = Pairing.plus(
-            Pairing.G1Point({ X: commitmentX, Y: commitmentY }),
+            Pairing.G1Point({ X: _commitmentX, Y: _commitmentY }),
             Pairing.negate(
-                Pairing.mulScalar(SRS_G1_0, value)
+                Pairing.mulScalar(SRS_G1_0, _value)
             )
         );
 
-        // proof
+        // The proof as a G1 point
         Pairing.G1Point memory proofPoint = 
             Pairing.G1Point({
-                X: proofX,
-                Y: proofY
+                X: _proofX,
+                Y: _proofY
             });
 
-        // -proof
+        // Negate the proof
         Pairing.G1Point memory negProof = Pairing.negate(proofPoint);
 
-        // xCommit
-        Pairing.G2Point memory xCommit = SRS_G2_1;
+        // Compute index * proof
+        Pairing.G1Point memory indexMulProof = Pairing.mulScalar(proofPoint, _index);
 
-        // index * proof
-        Pairing.G1Point memory indexMulProof = Pairing.mulScalar(proofPoint, index);
-
+        // Returns true if and only if
         // e((index * proof) + (commitment - aCommitment), G2.g) * e(-proof, xCommit) == 1
         return Pairing.pairing(
             Pairing.plus(indexMulProof, commitmentMinusA),
             g2Generator,
             negProof,
-            xCommit
+            SRS_G2_1
         );
     }
 }

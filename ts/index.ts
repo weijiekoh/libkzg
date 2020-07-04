@@ -24,6 +24,11 @@ const G2 = ffjavascript.bn128.G2
 const FIELD_SIZE = babyJub.p
 const TEST_SECRET = BigInt(1234)
 
+const genBabyJubField = () => {
+    const prime = babyJub.p
+    return galois.createPrimeField(prime)
+}
+
 /*
  * @return The G1 values of the structured reference string.
  * TODO: add production values from PPOT
@@ -65,7 +70,7 @@ const srsG2 = (
  */
 const commit = (
     coefficients: bigint[],
-): G1Point => {
+): Commitment => {
     const srs = srsG1(coefficients.length)
     return polyCommit(coefficients, G1, srs)
 }
@@ -153,7 +158,6 @@ const verify = (
 
     // Note that the verifier needs to know the first 2 elements from the G1
     // SRS and the first 2 values from the G2 SRS
-    debugger
     const aCommit = commit(a.toValues())
     const xCommit = srs[1] //polyCommit(x.toValues(), G2, srs)
     const zCommit = polyCommit(z.toValues(), G2, srs)
@@ -230,12 +234,12 @@ const genVerifierContractParams = (
     value: bigint,
 ) => {
     return {
-        commitmentX: commitment[0],
-        commitmentY: commitment[1],
-        proofX: proof[0],
-        proofY: proof[1],
-        index,
-        value,
+        commitmentX: '0x' + commitment[0].toString(16),
+        commitmentY: '0x' + commitment[1].toString(16),
+        proofX: '0x' + proof[0].toString(16),
+        proofY: '0x' + proof[1].toString(16),
+        index: '0x' + BigInt(index).toString(16),
+        value: '0x' + BigInt(value).toString(16),
     }
 }
 
@@ -326,6 +330,7 @@ const isValidPairing = (
 
 export {
     FIELD_SIZE,
+    genBabyJubField,
     genCoefficients,
     genQuotientPolynominal,
     commit,
@@ -334,4 +339,8 @@ export {
     verifyViaEIP197,
     genVerifierContractParams,
     isValidPairing,
+    Coefficient,
+    Polynominal,
+    Commitment,
+    Proof,
 }
