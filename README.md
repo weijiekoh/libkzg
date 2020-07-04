@@ -57,6 +57,24 @@ const result = await verifierContract.verifyKZG(
 )
 ```
 
+## Solidity verifier contract
+
+The repository contains a Solidity contract with a `verifyKZG()` function which
+performs on-chain proof verification:
+
+```sol
+function verifyKZG(
+    uint256 _commitmentX,
+    uint256 _commitmentY,
+    uint256 _proofX,
+    uint256 _proofY,
+    uint256 _index,
+    uint256 _value
+) public view returns (bool)
+```
+
+It consumes about 178078 gas when called by a contract.
+
 ## Try it out
 
 Clone this repository, install dependencies, and build the source:
