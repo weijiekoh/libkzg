@@ -82,9 +82,25 @@ describe('Solidity verifier', () => {
         const params = genVerifierContractParams(commitment, proof, i, yVal)
 
         const result = await verifierContract.verifyKZG(
+            params.commitmentX,
+            params.commitmentY,
             '0x0',
             '0x0',
-            //params.commitmentY,
+            params.index,
+            params.value,
+        )
+        expect(result).toBeFalsy()
+    })
+
+    it('should not verify an invalid commitment', async() => {
+        const i = 0
+        const proof = genProof(coefficients, i)
+        const yVal = values[i]
+        const params = genVerifierContractParams(commitment, proof, i, yVal)
+
+        const result = await verifierContract.verifyKZG(
+            '0x0',
+            '0x0',
             params.proofX,
             params.proofY,
             params.index,

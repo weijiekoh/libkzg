@@ -26,8 +26,7 @@ const mod = (n: any, m: any): BigInt => {
     )
 }
 
-import { babyJub } from 'circomlib'
-const prime = babyJub.p
+const prime = FIELD_SIZE
 const field = genBabyJubField()
 const coefficients = [5, 0, 2, 1].map(BigInt)
 

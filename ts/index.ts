@@ -1,10 +1,8 @@
 import * as assert from 'assert'
-import { babyJub } from 'circomlib'
 import * as galois from '@guildofweavers/galois'
 import * as bn128 from 'rustbn.js'
 import * as ffjavascript from 'ffjavascript'
 import { ec } from 'elliptic'
-
 
 type G1Point = ec
 type G2Point = ec
@@ -21,12 +19,11 @@ interface PairingInputs {
 const G1 = ffjavascript.bn128.G1
 const G2 = ffjavascript.bn128.G2
 
-const FIELD_SIZE = babyJub.p
+const FIELD_SIZE = BigInt('21888242871839275222246405745257275088548364400416034343698204186575808495617')
 const TEST_SECRET = BigInt(1234)
 
 const genBabyJubField = () => {
-    const prime = babyJub.p
-    return galois.createPrimeField(prime)
+    return galois.createPrimeField(FIELD_SIZE)
 }
 
 /*

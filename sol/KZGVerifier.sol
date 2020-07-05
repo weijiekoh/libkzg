@@ -124,7 +124,7 @@ contract Verifier {
 
     using Pairing for *;
 
-    uint256 constant SNARK_SCALAR_FIELD = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
+    uint256 constant BABYJUB_P = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
 
     Pairing.G2Point g2Generator = Pairing.G2Point({
         X: [
@@ -177,12 +177,12 @@ contract Verifier {
         uint256 _value
     ) public view returns (bool) {
         // Make sure each parameter is less than the prime q
-        require(_commitmentX < SNARK_SCALAR_FIELD, "Verifier.verifyKZG: commitmentX is out of range");
-        require(_commitmentY < SNARK_SCALAR_FIELD, "Verifier.verifyKZG: commitmentY is out of range");
-        require(_proofX < SNARK_SCALAR_FIELD, "Verifier.verifyKZG: proofX is out of range");
-        require(_proofY < SNARK_SCALAR_FIELD, "Verifier.verifyKZG: proofY is out of range");
-        require(_index < SNARK_SCALAR_FIELD, "Verifier.verifyKZG: index is out of range");
-        require(_value < SNARK_SCALAR_FIELD, "Verifier.verifyKZG: value is out of range");
+        require(_commitmentX < BABYJUB_P, "Verifier.verifyKZG: commitmentX is out of range");
+        require(_commitmentY < BABYJUB_P, "Verifier.verifyKZG: commitmentY is out of range");
+        require(_proofX < BABYJUB_P, "Verifier.verifyKZG: proofX is out of range");
+        require(_proofY < BABYJUB_P, "Verifier.verifyKZG: proofY is out of range");
+        require(_index < BABYJUB_P, "Verifier.verifyKZG: index is out of range");
+        require(_value < BABYJUB_P, "Verifier.verifyKZG: value is out of range");
 
         // Check that 
         //     e(commitment - aCommit, G2.g) == e(proof, xCommit - zCommit)
