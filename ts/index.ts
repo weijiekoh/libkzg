@@ -177,19 +177,6 @@ const verify = (
     value: bigint,
     p: bigint = FIELD_SIZE,
 ): boolean => {
-    const field = galois.createPrimeField(p)
-    const srs = srsG2()
-    
-    const a = field.newVectorFrom([value].map(BigInt))
-    const x = field.newVectorFrom([0, 1].map(BigInt))
-    const z = field.newVectorFrom([index].map(BigInt))
-
-    // Note that the verifier needs to know the first 2 elements from the G1
-    // SRS and the first 2 values from the G2 SRS
-    const aCommit = commit(a.toValues())
-    const xCommit = srs[1] //polyCommit(x.toValues(), G2, srs)
-    const zCommit = polyCommit(z.toValues(), G2, srs)
-
     // To verify the proof, use the following equation:
     // (p - a) == proof * (x - z)
     // (p - a) / (x - z) == proof
@@ -199,17 +186,28 @@ const verify = (
     //
     // xCommit = commit([0, 1]) = SRS_G2_1
     // zCommit = commit([_index]) = SRS_G2_1 * _index
-    // e((index * proof) + (commitment - aCommitment), G2.g) * e(-proof, xCommit) == 1
+    // e((index * proof) + (commitment - aCommit), G2.g) == e(proof, xCommit)
+    //
+    index = BigInt(index)
+    const field = galois.createPrimeField(p)
+    const srs = srsG2()
+    
+    const aCommit = commit([BigInt(value)])
+    const xCommit = srs[1] // polyCommit(x.toValues(), G2, srs)
+
     const lhs = ffjavascript.bn128.pairing(
-        G1.affine(G1.sub(commitment, aCommit)),
+        G1.affine(
+            G1.add(
+                G1.mulScalar(proof, index), // index * proof
+                G1.sub(commitment, aCommit), // commitment - aCommit
+            ),
+        ),
         G2.g,
     )
 
     const rhs = ffjavascript.bn128.pairing(
-        proof,
-        G2.affine(
-            G2.sub(xCommit, zCommit)
-        ),
+        G1.affine(proof),
+        srs[1], // xCommit
     )
 
     return ffjavascript.bn128.F12.eq(lhs, rhs)
