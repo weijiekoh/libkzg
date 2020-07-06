@@ -128,27 +128,48 @@ contract Verifier {
 
     Pairing.G2Point g2Generator = Pairing.G2Point({
         X: [
-            uint256(11559732032986387107991004021392285783925812861821192530917403151452391805634), 
-            uint256(10857046999023057135944570762232829481370756359578518086990519993285655852781) 
+            uint256(0x198e9393920d483a7260bfb731fb5d25f1aa493335a9e71297e485b7aef312c2), 
+            uint256(0x1800deef121f1e76426a00665e5c4479674322d4f75edadd46debd5cd992f6ed) 
         ],
         Y: [
-            uint256(4082367875863433681332203403145435568316851327593401208105741076214120093531),
-            uint256(8495653923123431417604973247489272438418190587263600148770280649306958101930) 
+            uint256(0x090689d0585ff075ec9e99ad690c3395bc4b313370b38ef355acdadcd122975b),
+            uint256(0x12c85ea5db8c6deb4aab71808dcb408fe3d1e7690c43d37b4ce6cc0166fa7daa) 
         ]
 
     });
 
     Pairing.G1Point SRS_G1_0 = Pairing.G1Point({ X: 1, Y: 2 });
 
-    // A test SRS value using the secret 1234. Do not use it in production!
+    /*
+     * This value is the second TauG2 value from challenge file #46 of the
+     * Perpetual Powers of Tau ceremony. The Blake2b hash of challenge file
+     * is:
+     *
+     * 939038cd 2dc5a1c0 20f368d2 bfad8686 
+     * 950fdf7e c2d2e192 a7d59509 3068816b
+     * becd914b a293dd8a cb6d18c7 b5116b66 
+     * ea54d915 d47a89cc fbe2d5a3 444dfbed
+     *
+     * The challenge file can be retrieved at:
+     * https://ppot.blob.core.windows.net/public/challenge_0046
+     *
+     * The ceremony transcript can be retrieved at:
+     * https://github.com/weijiekoh/perpetualpowersoftau
+     *
+     * Anyone can verify the transcript to ensure that the values in the challenge
+     * file have not been tampered with. Moreover, as long as one participant in
+     * the ceremony has discarded their toxic waste, the whole ceremony is secure.
+     * Please read the following for more information:
+     * https://medium.com/coinmonks/announcing-the-perpetual-powers-of-tau-ceremony-to-benefit-all-zk-snark-projects-c3da86af8377
+     */
     Pairing.G2Point SRS_G2_1 = Pairing.G2Point({
         X: [
-            uint256(20581924060851364827089112084266116502083385887431055789664064343317555539927), 
-            uint256(11092999225633600247987762624347164490249105779527674870198751554395839697955) 
+            uint256(0x21a808dad5c50720fb7294745cf4c87812ce0ea76baa7df4e922615d1388f25a),
+            uint256(0x04c5e74c85a87f008a2feb4b5c8a1e7f9ba9d8eb40eb02e70139c89fb1c505a9) 
         ],
         Y: [
-            uint256(18968046579869378264211454225940124683613790899808490038348890384662573052093),
-            uint256(745165978236660430257472951680766366710880332450354657023528496579863883583) 
+            uint256(0x204b66d8e1fadc307c35187a6b813be0b46ba1cd720cd1c4ee5f68d13036b4ba),
+            uint256(0x2d58022915fc6bc90e036e858fbc98055084ac7aff98ccceb0e3fde64bc1a084) 
         ]
     });
 

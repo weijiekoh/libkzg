@@ -1,3 +1,4 @@
+require('module-alias/register')
 import * as assert from 'assert'
 import * as galois from '@guildofweavers/galois'
 import * as bn128 from 'rustbn.js'
@@ -20,7 +21,6 @@ const G1 = ffjavascript.bn128.G1
 const G2 = ffjavascript.bn128.G2
 
 const FIELD_SIZE = BigInt('21888242871839275222246405745257275088548364400416034343698204186575808495617')
-const TEST_SECRET = BigInt(1234)
 
 const genBabyJubField = () => {
     return galois.createPrimeField(FIELD_SIZE)
@@ -28,33 +28,64 @@ const genBabyJubField = () => {
 
 /*
  * @return The G1 values of the structured reference string.
- * TODO: add production values from PPOT
+ * These values were taken from challenge file #46 of the Perpetual Powers of
+ * Tau ceremony. The Blake2b hash of challenge file is:
+ *
+ * 939038cd 2dc5a1c0 20f368d2 bfad8686 
+ * 950fdf7e c2d2e192 a7d59509 3068816b
+ * becd914b a293dd8a cb6d18c7 b5116b66 
+ * ea54d915 d47a89cc fbe2d5a3 444dfbed
+ *
+ * The challenge file can be retrieved at:
+ * https://ppot.blob.core.windows.net/public/challenge_0046
+ *
+ * The ceremony transcript can be retrieved at:
+ * https://github.com/weijiekoh/perpetualpowersoftau
+ *
+ * Anyone can verify the transcript to ensure that the values in the challenge
+ * file have not been tampered with. Moreover, as long as one participant in
+ * the ceremony has discarded their toxic waste, the whole ceremony is secure.
+ * Please read the following for more information:
+ * https://medium.com/coinmonks/announcing-the-perpetual-powers-of-tau-ceremony-to-benefit-all-zk-snark-projects-c3da86af8377
  */
-const srsG1 = (
-    depth: number,
-    secret: bigint = TEST_SECRET,
-): G1Point[] => {
-    const g1: G1Point[] = [G1.g]
-    let s = BigInt(secret)
-
+const srsG1 = (depth: number): G1Point[] => {
+    assert(depth <= 128)
+    const srsg1DataRaw = require('@libkzg/taug1_128.json')
+    const g1: G1Point[] = []
     for (let i = 0; i < depth; i ++) {
-        g1.push(G1.affine(G1.mulScalar(G1.g, s)))
-        s = s * BigInt(secret)
+        g1.push([
+            BigInt(srsg1DataRaw[i][0]),
+            BigInt(srsg1DataRaw[i][1]),
+            BigInt(1),
+        ])
     }
+
+    assert(g1[0][0] === G1.g[0])
+    assert(g1[0][1] === G1.g[1])
+    assert(g1[0][2] === G1.g[2])
 
     return g1
 }
 
 /*
- * @return The G2 values of the structured reference string.
- * TODO: add production values from PPOT
+ * @return The first two TauG2 values of the structured reference string.
+ * They were taken from challenge file #46 of the Perpetual Powers of
+ * Tau ceremony as described above..
  */
-const srsG2 = (
-    secret: bigint = TEST_SECRET,
-): G2Point[] => {
+const srsG2 = (): G2Point[] => {
     return [
         G2.g,
-        G2.affine(G2.mulScalar(G2.g, secret)),
+        [
+            [
+                '0x04c5e74c85a87f008a2feb4b5c8a1e7f9ba9d8eb40eb02e70139c89fb1c505a9', 
+                '0x21a808dad5c50720fb7294745cf4c87812ce0ea76baa7df4e922615d1388f25a'
+            ].map(BigInt),
+            [
+                '0x2d58022915fc6bc90e036e858fbc98055084ac7aff98ccceb0e3fde64bc1a084',
+                '0x204b66d8e1fadc307c35187a6b813be0b46ba1cd720cd1c4ee5f68d13036b4ba',
+            ].map(BigInt),
+            [ BigInt(1), BigInt(0) ],
+        ],
     ]
 }
 
@@ -79,7 +110,7 @@ const polyCommit = (
 ): G1Point | G2Point => {
     let result = G.zero
     for (let i = 0; i < coefficients.length; i ++) {
-        let coeff = coefficients[i]
+        let coeff = BigInt(coefficients[i])
         assert(coeff >= BigInt(0))
 
         result = G.affine(G.add(result, G.mulScalar(srs[i], coeff)))
@@ -164,7 +195,11 @@ const verify = (
     // (p - a) / (x - z) == proof
 
     // Check that 
-    // e(commitment - aCommitment, G2.g) == e(proof, xCommit - yCommit)
+    // e(commitment - aCommit, G2.g) == e(proof, xCommit - zCommit)
+    //
+    // xCommit = commit([0, 1]) = SRS_G2_1
+    // zCommit = commit([_index]) = SRS_G2_1 * _index
+    // e((index * proof) + (commitment - aCommitment), G2.g) * e(-proof, xCommit) == 1
     const lhs = ffjavascript.bn128.pairing(
         G1.affine(G1.sub(commitment, aCommit)),
         G2.g,

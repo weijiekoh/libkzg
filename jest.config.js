@@ -16,6 +16,9 @@ module.exports = {
         'json',
         'node'
     ],
+    moduleNameMapper: {
+       "^@libkzg(.*)$": "<rootDir>./$1",
+    },
     globals: {
         'ts-jest': {
             diagnostics: {
