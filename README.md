@@ -133,16 +133,40 @@ The output should look like:
     ✓ should not verify an invalid proof (376 ms)
 ```
 
-## Warnings
+## Trusted setup
 
-The trusted setup for this library has not been perfomed yet. The test SRS
-values are based on a secret of `1234`, so anyone can create fake proofs.
-Moreover, the code has not been audited. Do not use it in production.
+The trusted setup for this library is the [Perpetual Powers of Tau Ceremony
+(PPOT)](https://github.com/weijiekoh/perpetualpowersoftau<Paste>). It comes
+packaged with the first 65536 G1 and the first two G2 powers of tau from the
+46th contribution to the ceremony, which means that it can commit up to 65536
+values.
+
+The Blake2b hash of this challenge file is:
+
+```
+939038cd 2dc5a1c0 20f368d2 bfad8686 
+950fdf7e c2d2e192 a7d59509 3068816b
+becd914b a293dd8a cb6d18c7 b5116b66 
+ea54d915 d47a89cc fbe2d5a3 444dfbed
+```
+
+The challenge file can be retrieved at:
+
+https://ppot.blob.core.windows.net/public/challenge_0046
+
+The ceremony transcript can be retrieved at:
+
+https://github.com/weijiekoh/perpetualpowersoftau
+
+Anyone can verify the transcript to ensure that the values in the challenge
+file have not been tampered with. Moreover, as long as one participant in the
+ceremony has discarded their toxic waste, the whole ceremony is secure. Please
+read [this blog
+post](https://medium.com/coinmonks/announcing-the-perpetual-powers-of-tau-ceremony-to-benefit-all-zk-snark-projects-c3da86af8377)
+for more information.
 
 ## Credits
 
-Many thanks to [Chih-Cheng Liang](https://twitter.com/chihchengliang) and
-[Barry WhiteHat](https://github.com/barryWhiteHat/) for their guidance.
-
-For more information, please refer to: https://hackmd.io/PGjV5nwdTWyYnLp_u1xsDQ
-(note that this document is slightly outdated and inaccurate).
+Many thanks to [Chih-Cheng Liang](https://twitter.com/chihchengliang), [Kobi
+Gurkan](https://github.com/kobigurk/), and [Barry
+WhiteHat](https://github.com/barryWhiteHat/) for their guidance.
