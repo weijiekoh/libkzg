@@ -26,6 +26,8 @@ const genBabyJubField = () => {
     return galois.createPrimeField(FIELD_SIZE)
 }
 
+const srsg1DataRaw = require('@libkzg/taug1_65536.json')
+
 /*
  * @return The G1 values of the structured reference string.
  * These values were taken from challenge file #46 of the Perpetual Powers of
@@ -49,8 +51,7 @@ const genBabyJubField = () => {
  * https://medium.com/coinmonks/announcing-the-perpetual-powers-of-tau-ceremony-to-benefit-all-zk-snark-projects-c3da86af8377
  */
 const srsG1 = (depth: number): G1Point[] => {
-    assert(depth <= 128)
-    const srsg1DataRaw = require('@libkzg/taug1_128.json')
+    assert(depth <= 65536)
     const g1: G1Point[] = []
     for (let i = 0; i < depth; i ++) {
         g1.push([
