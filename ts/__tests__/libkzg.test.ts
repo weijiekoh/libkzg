@@ -1,7 +1,7 @@
 import {
     FIELD_SIZE,
     genCoefficients,
-    genQuotientPolynominal,
+    genQuotientPolynomial,
     genProof,
     verify,
     verifyViaEIP197,
@@ -31,7 +31,7 @@ const field = genBabyJubField()
 const coefficients = [5, 0, 2, 1].map(BigInt)
 
 describe('libkzg', () => {
-    describe('commit, prove, and verify the polynominal [5, 0, 2 1]', () => {
+    describe('commit, prove, and verify the polynomial [5, 0, 2 1]', () => {
         let proof
         let commitment
         const xVal = BigInt(6)
@@ -58,8 +58,8 @@ describe('libkzg', () => {
             expect(commitment.length === 3)
         })
 
-        it('generate the coefficients of a quotient polynominal', () => {
-            const quotientPolyCoefficients = genQuotientPolynominal(coefficients, xVal)
+        it('generate the coefficients of a quotient polynomial', () => {
+            const quotientPolyCoefficients = genQuotientPolynomial(coefficients, xVal)
             expect(quotientPolyCoefficients[0]).toEqual(BigInt(48))
             expect(quotientPolyCoefficients[1]).toEqual(BigInt(8))
             expect(quotientPolyCoefficients[2]).toEqual(BigInt(1))
@@ -124,7 +124,7 @@ describe('libkzg', () => {
         })
     })
 
-    describe('commit, prove, and verify a random polynominal', () => {
+    describe('commit, prove, and verify a random polynomial', () => {
         it('generate a valid proof', () => {
             const degree = 128
             const values: bigint[] = []

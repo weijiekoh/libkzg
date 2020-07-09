@@ -8,7 +8,7 @@ import { ec } from 'elliptic'
 type G1Point = ec
 type G2Point = ec
 type Coefficient = bigint
-type Polynominal = Coefficient[]
+type Polynomial = Coefficient[]
 type Commitment = G1Point
 type Proof = G1Point
 
@@ -71,7 +71,7 @@ const srsG1 = (depth: number): G1Point[] => {
 /*
  * @return The first two TauG2 values of the structured reference string.
  * They were taken from challenge file #46 of the Perpetual Powers of
- * Tau ceremony as described above..
+ * Tau ceremony as described above.
  */
 const srsG2 = (): G2Point[] => {
     return [
@@ -91,8 +91,8 @@ const srsG2 = (): G2Point[] => {
 }
 
 /*
- * @return A KZG commitment to a polynominal.
- * @param coefficients The coefficients of the polynominal to commit. To
+ * @return A KZG commitment to a polynomial.
+ * @param coefficients The coefficients of the polynomial to commit. To
  *        generate these coefficients from arbitary values, use
  *        genCoefficients().
  * @param p The field size. Defaults to the BabyJub field size.
@@ -128,13 +128,13 @@ const polyCommit = (
 }
 
 /*
- * @return A the coefficients to the quotient polynominal used to generate a
+ * @return A the coefficients to the quotient polynomial used to generate a
  *         KZG proof.
- * @param coefficients The coefficients of the polynominal.
- * @param xVal The x-value for the polynominal evaluation proof.
+ * @param coefficients The coefficients of the polynomial.
+ * @param xVal The x-value for the polynomial evaluation proof.
  * @param p The field size. Defaults to the BabyJub field size.
  */
-const genQuotientPolynominal = (
+const genQuotientPolynomial = (
     coefficients: Coefficient[],
     xVal: bigint,
     p: bigint = FIELD_SIZE,
@@ -157,9 +157,9 @@ const genQuotientPolynominal = (
 
 /*
  * @return A KZG commitment proof of evaluation at a single point.
- * @param coefficients The coefficients of the polynominal associated with the
+ * @param coefficients The coefficients of the polynomial associated with the
  *        KZG commitment.
- * @param index The x-value for the polynominal evaluation proof.
+ * @param index The x-value for the polynomial evaluation proof.
  * @param p The field size. Defaults to the BabyJub field size.
  */
 const genProof = (
@@ -167,10 +167,15 @@ const genProof = (
     index: number | bigint,
     p: bigint = FIELD_SIZE,
 ): Proof => {
-    const quotient = genQuotientPolynominal(coefficients, BigInt(index), p)
+    const quotient = genQuotientPolynomial(coefficients, BigInt(index), p)
     return commit(quotient)
 }
 
+/*
+ * Returns true if the proof (that for the polynomial committed to, the
+ * evaluation at the given index equals the given value) is valid, and false
+ * otherwise.
+ */
 const verify = (
     commitment: Commitment,
     proof: Proof,
@@ -275,13 +280,13 @@ const genVerifierContractParams = (
 }
 
 /*
- * @return The coefficient to a polynominal which intersects the points (0,
+ * @return The coefficient to a polynomial which intersects the points (0,
  *         values[0]) ... (n, values[n]). Each value must be less than
  *         FIELD_SIZE. Likewise, each resulting coefficient will be less than
  *         FIELD_SIZE. This is because all operations in this function work in
  *         a finite field of prime order p = FIELD_SIZE. The output of this
- *         function can be fed into commit() to produce a KZG polynominal
- *         commitment to said polynominal.
+ *         function can be fed into commit() to produce a KZG polynomial
+ *         commitment to said polynomial.
  * @param values The values to interpolate.
  * @param p The field size. Defaults to the BabyJub field size.
  */
@@ -363,7 +368,7 @@ export {
     FIELD_SIZE,
     genBabyJubField,
     genCoefficients,
-    genQuotientPolynominal,
+    genQuotientPolynomial,
     commit,
     genProof,
     verify,
@@ -371,7 +376,7 @@ export {
     genVerifierContractParams,
     isValidPairing,
     Coefficient,
-    Polynominal,
+    Polynomial,
     Commitment,
     Proof,
 }
