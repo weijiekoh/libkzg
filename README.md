@@ -4,8 +4,8 @@ This is a Typescript library which implements the [KZG10 polynominal
 commitment](https://www.iacr.org/archive/asiacrypt2010/6477178/6477178.pdf)
 scheme.
 
-Currently, it can produce and verify proofs of one point per proof. Multi-point
-proofs have not been implemented yet.
+It can produce and verify proofs of one point per proof, or multiple points per
+proof.
 
 ## Functions
 
@@ -28,7 +28,7 @@ Generate a commitment to the polynominal with the specified coefficients.
 **`genProof = (coefficients: Coefficient[], index: number | bigint): Proof`**
 
 Generate a proof (also known as a witness) that the polynominal will evaluate
-to `coefficients[index]` given `index` as the x-value.
+to `p(index)` given `index` as the x-value.
 
 ### `verify`: verify a proof of evaluation at one point
 
@@ -36,6 +36,21 @@ to `coefficients[index]` given `index` as the x-value.
 
 Given a proof, verify that the polynominal with the specified commitment
 evaluates to the y-value `value` at the x-value `index`.
+
+### `genMultiProof`: generate a proof of evaluation at multiple points
+
+**`genMultiProof = (coefficients: Coefficient[], indices: number[] | bigint[]): MultiProof`**
+
+Generate a proof (also known as a witness) that the polynominal will evaluate
+to `p(indices[i])` per `i`.
+
+### `verifyMulti`: verify a proof of evaulation at multiple points
+
+**`verifyMulti = (commitment: Commitment, proof: MultiProof, indices: number[] | bigint[], values: bigint[])`**
+
+Given a proof, verify that the polynominal with the specified commitment
+evaluates to the each y-value in `values` at the corresponding x-value in
+`indices`.
 
 ### `genVerifierContractParams`: generate parameters to the verifier contract's `verifyKZG()` function
 

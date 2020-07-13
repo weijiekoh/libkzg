@@ -37,8 +37,9 @@
   },
   "dependencies": {
     "@guildofweavers/galois": "^0.4.22",
-    "module-alias": "^2.2.2",
+    "argparse": "^1.0.10",
     "ffjavascript": "0.1.3",
+    "module-alias": "^2.2.2",
     "rustbn.js": "^0.2.0"
   }
 }

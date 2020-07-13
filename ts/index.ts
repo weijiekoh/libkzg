@@ -11,6 +11,7 @@ type Coefficient = bigint
 type Polynomial = Coefficient[]
 type Commitment = G1Point
 type Proof = G1Point
+type MultiProof = G2Point
 
 interface PairingInputs {
     G1: G1Point;
@@ -27,9 +28,10 @@ const genBabyJubField = () => {
 }
 
 const srsg1DataRaw = require('@libkzg/taug1_65536.json')
+const srsg2DataRaw = require('@libkzg/taug2_65536.json')
 
 /*
- * @return The G1 values of the structured reference string.
+ * @return Up to 65536 G1 values of the structured reference string.
  * These values were taken from challenge file #46 of the Perpetual Powers of
  * Tau ceremony. The Blake2b hash of challenge file is:
  *
@@ -51,7 +53,9 @@ const srsg1DataRaw = require('@libkzg/taug1_65536.json')
  * https://medium.com/coinmonks/announcing-the-perpetual-powers-of-tau-ceremony-to-benefit-all-zk-snark-projects-c3da86af8377
  */
 const srsG1 = (depth: number): G1Point[] => {
+    assert(depth > 0)
     assert(depth <= 65536)
+
     const g1: G1Point[] = []
     for (let i = 0; i < depth; i ++) {
         g1.push([
@@ -69,25 +73,30 @@ const srsG1 = (depth: number): G1Point[] => {
 }
 
 /*
- * @return The first two TauG2 values of the structured reference string.
+ * @return Up to 65536 G2 values of the structured reference string.
  * They were taken from challenge file #46 of the Perpetual Powers of
  * Tau ceremony as described above.
  */
-const srsG2 = (): G2Point[] => {
-    return [
-        G2.g,
-        [
-            [
-                '0x04c5e74c85a87f008a2feb4b5c8a1e7f9ba9d8eb40eb02e70139c89fb1c505a9', 
-                '0x21a808dad5c50720fb7294745cf4c87812ce0ea76baa7df4e922615d1388f25a'
-            ].map(BigInt),
-            [
-                '0x2d58022915fc6bc90e036e858fbc98055084ac7aff98ccceb0e3fde64bc1a084',
-                '0x204b66d8e1fadc307c35187a6b813be0b46ba1cd720cd1c4ee5f68d13036b4ba',
-            ].map(BigInt),
+const srsG2 = (depth: number): G2Point[] => {
+    assert(depth > 0)
+    assert(depth <= 65536)
+
+    const g2: G2Point[] = []
+    for (let i = 0; i < depth; i ++) {
+        g2.push([
+            [ srsg2DataRaw[i][0], srsg2DataRaw[i][1] ].map(BigInt),
+            [ srsg2DataRaw[i][2], srsg2DataRaw[i][3] ].map(BigInt),
             [ BigInt(1), BigInt(0) ],
-        ],
-    ]
+        ])
+    }
+    assert(g2[0][0][0] === G2.g[0][0])
+    assert(g2[0][0][1] === G2.g[0][1])
+    assert(g2[0][1][0] === G2.g[1][0])
+    assert(g2[0][1][1] === G2.g[1][1])
+    assert(g2[0][2][0] === G2.g[2][0])
+    assert(g2[0][2][1] === G2.g[2][1])
+
+    return g2
 }
 
 /*
@@ -171,6 +180,113 @@ const genProof = (
     return commit(quotient)
 }
 
+const genZeroPoly = (
+    field: galois.FiniteField,
+    indices: number[] | bigint[],
+): galois.Vector => {
+    let zPoly = field.newVectorFrom([
+        BigInt(-1) * BigInt(indices[0]),
+        BigInt(1),
+    ])
+
+    for (let i = 1; i < indices.length; i ++) {
+        zPoly = field.mulPolys(
+            zPoly,
+            field.newVectorFrom([
+                BigInt(-1) * BigInt(indices[i]),
+                BigInt(1),
+            ]),
+        )
+    }
+
+    return zPoly
+}
+
+const genInterpolatingPoly = (
+    field: galois.FiniteField,
+    poly: galois.Vector,
+    indices: number[] | bigint[],
+): galois.Vector => {
+    const x: bigint[] = []
+    const values: bigint[] = []
+
+    for (let i = 0; i < indices.length; i ++) {
+        const index = BigInt(indices[i])
+        const yVal = field.evalPolyAt(poly, index)
+        x.push(index)
+        values.push(yVal)
+    }
+
+    const iPoly = field.interpolate(
+        field.newVectorFrom(x),
+        field.newVectorFrom(values),
+    )
+
+    return iPoly
+}
+
+const genMultiProof = (
+    coefficients: Coefficient[],
+    indices: number[] | bigint[],
+    p: bigint = FIELD_SIZE,
+): MultiProof => {
+
+    const field = galois.createPrimeField(p)
+    const poly = field.newVectorFrom(coefficients)
+
+    const iPoly = genInterpolatingPoly(field, poly, indices)
+    const zPoly = genZeroPoly(field, indices)
+    const qPoly = field.divPolys(
+        field.subPolys(poly, iPoly),
+        zPoly,
+    )
+
+    const qPolyCoeffs = qPoly.toValues()
+    const multiProof = polyCommit(qPolyCoeffs, G2, srsG2(qPolyCoeffs.length))
+
+    return multiProof
+}
+
+
+const verifyMulti = (
+    commitment: Commitment,
+    proof: MultiProof,
+    indices: number[] | bigint[],
+    values: bigint[],
+    p: bigint = FIELD_SIZE,
+) => {
+    const field = galois.createPrimeField(p)
+    const x: bigint[] = []
+
+    for (let i = 0; i < indices.length; i ++) {
+        const index = BigInt(indices[i])
+        x.push(index)
+    }
+    const iPoly = field.interpolate(
+        field.newVectorFrom(x),
+        field.newVectorFrom(values),
+    )
+    const zPoly = genZeroPoly(field, indices)
+
+    // e(proof, commit(zPoly)) = e(commitment - commit(iPoly), g)
+
+    const zPolyCoeffs = zPoly.toValues()
+    const zCommit = commit(zPolyCoeffs)
+    const iCommit = commit(iPoly.toValues())
+
+    const lhs = ffjavascript.bn128.pairing(
+        G1.affine(zCommit),
+        G2.affine(proof),
+    )
+
+    const rhs = ffjavascript.bn128.pairing(
+        G1.affine(G1.sub(commitment, iCommit)),
+        G2.g,
+    )
+
+    return ffjavascript.bn128.F12.eq(lhs, rhs)
+}
+
 /*
  * Returns true if the proof (that for the polynomial committed to, the
  * evaluation at the given index equals the given value) is valid, and false
@@ -196,7 +312,7 @@ const verify = (
     //
     index = BigInt(index)
     const field = galois.createPrimeField(p)
-    const srs = srsG2()
+    const srs = srsG2(2)
     
     const aCommit = commit([BigInt(value)])
     const xCommit = srs[1] // polyCommit(x.toValues(), G2, srs)
@@ -234,7 +350,7 @@ const verifyViaEIP197 = (
     // e((index * proof) + (commitment - aCommitment), G2.g) * e(-proof, xCommit) == 1
     // as this is what the Solidity verifier needs to check
     const field = galois.createPrimeField(p)
-    const srs = srsG2()
+    const srs = srsG2(2)
 
     const a = field.newVectorFrom([value].map(BigInt))
     const aCommit = commit(a.toValues())
@@ -371,12 +487,15 @@ export {
     genQuotientPolynomial,
     commit,
     genProof,
+    genMultiProof,
     verify,
     verifyViaEIP197,
+    verifyMulti,
     genVerifierContractParams,
     isValidPairing,
     Coefficient,
     Polynomial,
     Commitment,
+    genZeroPoly,
     Proof,
 }

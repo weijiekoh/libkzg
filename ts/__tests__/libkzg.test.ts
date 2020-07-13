@@ -3,12 +3,15 @@ import {
     genCoefficients,
     genQuotientPolynomial,
     genProof,
+    genMultiProof,
     verify,
+    verifyMulti,
     verifyViaEIP197,
     isValidPairing,
     genVerifierContractParams,
     genBabyJubField,
     commit,
+    genZeroPoly,
 } from '../'
 
 import * as galois from '@guildofweavers/galois'
@@ -155,6 +158,42 @@ describe('libkzg', () => {
         const R = G2.mulScalar(G2.g, Fr.e(3333))
         const QplusR = G2.add(Q, R)
 
+        it('perform a pairing check than e(xg, yg) = e(yg, xg)', () => {
+            const x = Fr.e(BigInt(555))
+            const y = Fr.e(BigInt(666))
+
+            const xg1 = G1.affine(G1.mulScalar(G1.g, x))
+            const yg2 = G2.affine(G2.mulScalar(G2.g, y))
+
+            const yg1 = G1.affine(G1.mulScalar(G1.g, y))
+            const xg2 = G2.affine(G2.mulScalar(G2.g, x))
+
+            const lhs = bn128.pairing(xg1, yg2)
+            const rhs = bn128.pairing(yg1, xg2)
+
+            expect(F12.eq(lhs, rhs)).toBeTruthy()
+        })
+
+        it('perform a pairing check than e(xyg, g) = e(xg, yg)', () => {
+            const x = Fr.e(BigInt(555))
+            const y = Fr.e(BigInt(666))
+
+            const xyg1 = G1.affine(
+                G1.mulScalar(
+                    G1.mulScalar(G1.g, y),
+                    x,
+                )
+            )
+
+            const xg1 = G1.affine(G1.mulScalar(G1.g, x))
+            const yg2 = G2.affine(G2.mulScalar(G2.g, y))
+
+            const lhs = bn128.pairing(xyg1, G2.g)
+            const rhs = bn128.pairing(xg1, yg2)
+
+            expect(F12.eq(lhs, rhs)).toBeTruthy()
+        })
+
         it('perform pairing checks using ffjavascript', () => {
 
             // Check that e(P, Q) * e(-P, Q) = 1
@@ -225,6 +264,39 @@ describe('libkzg', () => {
             ]
             const result2 = isValidPairing(input2)
             expect(result2).toBeTruthy()
+        })
+    })
+
+    describe('multiproofs', () => {
+        let multiProof
+        const indices = [2, 1].map(BigInt)
+        const values = indices.map((x) => field.evalPolyAt(field.newVectorFrom(coefficients), x))
+        const commitment = commit(coefficients)
+
+        it('should generate and verify a multiproof', () => {
+
+            multiProof = genMultiProof(coefficients, indices)
+            const isValid = verifyMulti(
+                commitment,
+                multiProof,
+                indices,
+                values,
+            )
+            expect(isValid).toBeTruthy()
+        })
+
+        it('not verify an invalid multiproof', () => {
+            const isValid = verifyMulti(
+                commitment,
+                [
+                    [multiProof[1][0], multiProof[1][1]],
+                    [multiProof[0][0], multiProof[0][1]],
+                    [multiProof[2][0], multiProof[2][1]],
+                ],
+                indices,
+                values,
+            )
+            expect(isValid).toBeFalsy()
         })
     })
 })

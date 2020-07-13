@@ -180,8 +180,8 @@ contract Verifier {
      *    - _value = p(_index) 
      *    - commitment = commit(p)
      *    - proof = genProof(p, _index, _value)
-     * Returns true if and only if the following hold:
-     *     - e(commitment - commit([_value]), G2.g) == e(proof, commit([0, 1]) - zCommit)
+     * Returns true if and only if the following holds:
+     *     e(commitment - commit([_value]), G2.g) == e(proof, commit([0, 1]) - zCommit)
      * @param _commitmentX The X-coordinate of the commitment.
      * @param _commitmentY The Y-coordinate of the commitment.
      * @param _proofX The X-coordinate of the proof.
