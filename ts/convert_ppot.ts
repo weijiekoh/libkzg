@@ -65,6 +65,9 @@ if (require.main === module) {
         output = processTauG1(data)
     } else if (args.type === 'taug2') {
         output = processTauG2(data)
+    } else {
+        console.error('Unexpected -t/--type value provided. Exiting.')
+        process.exit(1)
     }
 
     const outputJson = JSON.stringify(output)

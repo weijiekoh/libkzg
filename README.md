@@ -13,7 +13,8 @@ proof.
 **`genCoefficients = (values: bigint[]): Coefficient[]`**
 
 Given a list of arbitrary values, use polynominal interpolation to generate the
-coefficients of a polynominal to commit. Each value must be lower than the BabyJub field size:
+coefficients of a polynominal to commit. Each value must be lower than the
+BabyJub field size:
 
 `21888242871839275222246405745257275088548364400416034343698204186575808495617`
 
@@ -75,7 +76,7 @@ const result = await verifierContract.verifyKZG(
 ## Solidity verifier contract
 
 The repository contains a Solidity contract with a `verifyKZG()` function which
-performs on-chain proof verification:
+performs on-chain proof verification for single-point proofs:
 
 ```sol
 function verifyKZG(

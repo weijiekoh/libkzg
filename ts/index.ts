@@ -167,7 +167,7 @@ const genQuotientPolynomial = (
 /*
  * @return A KZG commitment proof of evaluation at a single point.
  * @param coefficients The coefficients of the polynomial associated with the
- *        KZG commitment.
+ *                     KZG commitment.
  * @param index The x-value for the polynomial evaluation proof.
  * @param p The field size. Defaults to the BabyJub field size.
  */
@@ -225,6 +225,13 @@ const genInterpolatingPoly = (
     return iPoly
 }
 
+/*
+ * @return A KZG commitment proof of evaluation at multiple points.
+ * @param coefficients The coefficients of the polynomial associated with the
+ *                     KZG commitment.
+ * @param indices The x-values for the polynomial evaluation proof.
+ * @param p The field size. Defaults to the BabyJub field size.
+ */
 const genMultiProof = (
     coefficients: Coefficient[],
     indices: number[] | bigint[],
@@ -247,7 +254,11 @@ const genMultiProof = (
     return multiProof
 }
 
-
+/*
+ * Returns true if the proof (that for the polynomial committed to, the
+ * evaluation at the given indices equals the respective value) is valid, and
+ * false otherwise.
+ */
 const verifyMulti = (
     commitment: Commitment,
     proof: MultiProof,
