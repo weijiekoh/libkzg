@@ -96,11 +96,21 @@ verification.
 | 1 | 34929 |
 | 2 | 47496 |
 | 4 | 72608 |
+| 5 | 85177 |
 | 8 | 122889 |
 | 16 | 223476 |
 | 32 | 424786 |
 | 64 | 827980 |
 | 128 | 1649494 |
+
+By comparison, the Poseidon T=3 function which hashes 2 elements per call
+consumes 49858 gas. Additionally, the Poseidon T=6 function which hashes 5
+elements per call consumes 112055 gas.
+
+This means that KZG commitments may be competitive as the accumulator for a
+Verkle tree. The downside is that it is much more difficult to verify KZG
+proofs in zero-knowledge, while the Poseidon hash function is built for
+efficiency in zk-SNARK circuits.
 
 The `verifyMulti()` function provides multi-point proof verification.
 
