@@ -76,6 +76,21 @@ describe('Solidity verifier', () => {
         expect(result.Y.toString()).toEqual(commitment[1].toString())
     })
 
+    /*
+    it('commit() benchmarks', async () => {
+        const NUM_COEFFS = 128
+        let coeffs: bigint[] = []
+        for (let i = 0; i < NUM_COEFFS; i ++) {
+            coeffs.push(BigInt(field.rand()))
+        }
+
+        //const commitment = commit(coeffs)
+        const tx = await verifierContract.commitBenchmark(coeffs.map((x) => x.toString()))
+        const receipt = await tx.wait()
+        console.log(receipt.gasUsed.toString())
+    })
+    */
+
     describe('multi-point proof verification', () => {
         it('should verify valid proofs', async () => {
             let indices: bigint[] = []

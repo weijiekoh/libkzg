@@ -64,10 +64,8 @@ Example usage:
 ```ts
 const params = genVerifierContractParams(commitment, proof, i, yVal)
 const result = await verifierContract.verify(
-    params.commitmentX,
-    params.commitmentY,
-    params.proofX,
-    params.proofY,
+    params.commitment,
+    params.proof,
     params.index,
     params.value,
 )
@@ -80,10 +78,8 @@ performs on-chain proof verification for single-point proofs:
 
 ```sol
 function verify(
-    uint256 _commitmentX,
-    uint256 _commitmentY,
-    uint256 _proofX,
-    uint256 _proofY,
+    Pairing.G1Point memory _commitment,
+    Pairing.G1Point memory _proof,
     uint256 _index,
     uint256 _value
 ) public view returns (bool)
@@ -92,19 +88,34 @@ function verify(
 It consumes about 178078 gas when called by a contract.
 
 It also provides a `commit()` function which can generate KZG commitments for
-up to 128 coefficients. This function is indended for multi-point proof
+up to 128 coefficients. This function is intended for multi-point proof
 verification.
 
 | Coefficients | Execution cost |
 |-|-|
-| 1 | 45700 |
-| 2 | 90087 |
-| 3 | 134474 |
+| 1 | 34929 |
+| 2 | 47496 |
+| 4 | 72608 |
+| 8 | 122889 |
+| 16 | 223476 |
+| 32 | 424786 |
+| 64 | 827980 |
+| 128 | 1649494 |
 
-This works out to `44387 * n + 1313` gas to compute a commtment to `n`
-coefficients.
+The `verifyMulti()` function provides multi-point proof verification.
 
-Multi-point proof verification consumes the following gas per point:
+```
+function verifyMulti(
+    Pairing.G1Point memory _commitment,
+    Pairing.G2Point memory _proof,
+    uint256[] memory _indices,
+    uint256[] memory _values,
+    uint256[] memory _iCoeffs,
+    uint256[] memory _zCoeffs
+) public view returns (bool)
+```
+
+It consumes the following gas per point:
 
 | Points | Cost | % Savings |
 |-|-|-|
@@ -142,20 +153,25 @@ npm run test
 The output should look like:
 
 ```
- PASS  ts/__tests__/libkzg.test.ts (13.256 s)
+ PASS  ts/__tests__/libkzg.test.ts (12.513 s)
   libkzg
-    commit, prove, and verify the polynominal [5, 0, 2 1]
+    commit, prove, and verify the polynomial [5, 0, 2 1]
       ✓ compute the coefficients to commit using genCoefficients() (4 ms)
-      ✓ generate a KZG commitment (3 ms)
-      ✓ generate the coefficients of a quotient polynominal
-      ✓ generate a KZG proof (3 ms)
-      ✓ verify a KZG proof (1657 ms)
-      ✓ not verify an invalid KZG proof (2322 ms)
-    commit, prove, and verify a random polynominal
-      ✓ generate a valid proof (3333 ms)
+      ✓ generate a KZG commitment (1 ms)
+      ✓ generate the coefficients of a quotient polynomial
+      ✓ generate a KZG proof (1 ms)
+      ✓ verify a KZG proof (1553 ms)
+      ✓ not verify an invalid KZG proof (2154 ms)
+    commit, prove, and verify a random polynomial
+      ✓ generate a valid proof (1400 ms)
     pairing checks
-      ✓ perform pairing checks using ffjavascript (2315 ms)
-      ✓ perform pairing checks using rustbn.js (1180 ms)
+      ✓ perform a pairing check than e(xg, yg) = e(yg, xg) (696 ms)
+      ✓ perform a pairing check than e(xyg, g) = e(xg, yg) (709 ms)
+      ✓ perform pairing checks using ffjavascript (2154 ms)
+      ✓ perform pairing checks using rustbn.js (1083 ms)
+    multiproofs
+      ✓ should generate and verify a multiproof (713 ms)
+      ✓ not verify an invalid multiproof (728 ms)
 ```
 
 The repository also includes a Solidity verifier. To test it, first launch
@@ -174,10 +190,19 @@ npm run test-sol-verifier
 The output should look like:
 
 ```
- PASS  ts/__tests__/solVerifier.test.ts (7.467 s)
+ PASS  ts/__tests__/solVerifier.test.ts (39.603 s)
   Solidity verifier
-    ✓ should verify a valid proof (3825 ms)
-    ✓ should not verify an invalid proof (376 ms)
+    ✓ evalPolyAt() should work (21 ms)
+    ✓ should generate a matching commitment (170 ms)
+    multi-point proof verification
+      ✓ should verify valid proofs (12498 ms)
+      ✓ should reject an invalid proof (184 ms)
+      ✓ should reject a valid proof with invalid iCoeffs and zCoeffs (1212 ms)
+      ✓ should pass a stress test (15296 ms)
+    single-point proof verification
+      ✓ should verify a valid proof (4355 ms)
+      ✓ should not verify an invalid proof (309 ms)
+      ✓ should not verify an invalid commitment (468 ms)
 ```
 
 ## Trusted setup

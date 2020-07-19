@@ -226,6 +226,12 @@ contract Verifier is Constants {
 
     /*
     // Uncomment to perform gas benchmarks
+    function commitBenchmark(
+        uint256[] memory _coefficients
+    ) public {
+        commit(_coefficients);
+    }
+
     function verifyMultiBenchmark(
         Pairing.G1Point memory _commitment,
         Pairing.G2Point memory _proof,
