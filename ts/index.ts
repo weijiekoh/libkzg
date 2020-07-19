@@ -18,6 +18,9 @@ interface PairingInputs {
     G2: G2Point;
 }
 
+// The number of G1 points from the SRS stored in Constants.sol
+const MAX_G1_SOL_POINTS = 128
+
 const G1 = ffjavascript.bn128.G1
 const G2 = ffjavascript.bn128.G2
 
@@ -185,7 +188,8 @@ const genZeroPoly = (
     indices: number[] | bigint[],
 ): galois.Vector => {
     let zPoly = field.newVectorFrom([
-        BigInt(-1) * BigInt(indices[0]),
+        // @ts-ignore
+        field.mod(BigInt(-1) * BigInt(indices[0])),
         BigInt(1),
     ])
 
@@ -237,6 +241,7 @@ const genMultiProof = (
     indices: number[] | bigint[],
     p: bigint = FIELD_SIZE,
 ): MultiProof => {
+    assert(coefficients.length > indices.length)
 
     const field = galois.createPrimeField(p)
     const poly = field.newVectorFrom(coefficients)
@@ -267,22 +272,21 @@ const verifyMulti = (
     p: bigint = FIELD_SIZE,
 ) => {
     const field = galois.createPrimeField(p)
-    const x: bigint[] = []
+    const xVals: bigint[] = []
 
     for (let i = 0; i < indices.length; i ++) {
         const index = BigInt(indices[i])
-        x.push(index)
+        xVals.push(index)
     }
     const iPoly = field.interpolate(
-        field.newVectorFrom(x),
+        field.newVectorFrom(xVals),
         field.newVectorFrom(values),
     )
     const zPoly = genZeroPoly(field, indices)
 
     // e(proof, commit(zPoly)) = e(commitment - commit(iPoly), g)
 
-    const zPolyCoeffs = zPoly.toValues()
-    const zCommit = commit(zPolyCoeffs)
+    const zCommit = commit(zPoly.toValues())
     const iCommit = commit(iPoly.toValues())
 
     const lhs = ffjavascript.bn128.pairing(
@@ -397,12 +401,59 @@ const genVerifierContractParams = (
     value: bigint,
 ) => {
     return {
-        commitmentX: '0x' + commitment[0].toString(16),
-        commitmentY: '0x' + commitment[1].toString(16),
-        proofX: '0x' + proof[0].toString(16),
-        proofY: '0x' + proof[1].toString(16),
+        commitment: [
+            '0x' + commitment[0].toString(16),
+            '0x' + commitment[1].toString(16),
+        ],
+        proof: [
+            '0x' + proof[0].toString(16),
+            '0x' + proof[1].toString(16),
+        ],
         index: '0x' + BigInt(index).toString(16),
         value: '0x' + BigInt(value).toString(16),
+    }
+}
+
+const genMultiVerifierContractParams = (
+    commitment: Commitment,
+    proof: MultiProof,
+    indices: number[] | bigint[],
+    values: bigint[],
+    p: bigint = FIELD_SIZE,
+) => {
+    assert(indices.length <= MAX_G1_SOL_POINTS)
+
+    const field = galois.createPrimeField(p)
+    const xVals: bigint[] = []
+    for (let i of indices) {
+        xVals.push(BigInt(i))
+    }
+
+    const iPoly = field.interpolate(
+        field.newVectorFrom(xVals),
+        field.newVectorFrom(values),
+    )
+    const zPoly = genZeroPoly(field, indices)
+
+    return {
+        commitment: [
+            '0x' + commitment[0].toString(16),
+            '0x' + commitment[1].toString(16),
+        ],
+        proof: [
+            [
+                '0x' + proof[0][1].toString(16),
+                '0x' + proof[0][0].toString(16),
+            ],
+            [
+                '0x' + proof[1][1].toString(16),
+                '0x' + proof[1][0].toString(16),
+            ]
+        ],
+        indices: xVals.map((x) => '0x' + BigInt(x).toString(16)),
+        values: values.map((x) => '0x' + BigInt(x).toString(16)),
+        iCoeffs: iPoly.toValues().map((x) => '0x' + BigInt(x).toString(16)),
+        zCoeffs: zPoly.toValues().map((x) => '0x' + BigInt(x).toString(16)),
     }
 }
 
@@ -503,6 +554,7 @@ export {
     verifyViaEIP197,
     verifyMulti,
     genVerifierContractParams,
+    genMultiVerifierContractParams,
     isValidPairing,
     Coefficient,
     Polynomial,

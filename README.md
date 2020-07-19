@@ -53,17 +53,17 @@ Given a proof, verify that the polynominal with the specified commitment
 evaluates to the each y-value in `values` at the corresponding x-value in
 `indices`.
 
-### `genVerifierContractParams`: generate parameters to the verifier contract's `verifyKZG()` function
+### `genVerifierContractParams`: generate parameters to the verifier contract's `verify()` function
 
 **`genVerifierContractParams = (commitment: Commitment, proof: Proof, index: number | bigint, value: bigint)`**
 
-A helper function which generates parameters to the `KZGVerifier.verifyKZG()`.
+A helper function which generates parameters to the `KZGVerifier.verify()`.
 
 Example usage: 
 
 ```ts
 const params = genVerifierContractParams(commitment, proof, i, yVal)
-const result = await verifierContract.verifyKZG(
+const result = await verifierContract.verify(
     params.commitmentX,
     params.commitmentY,
     params.proofX,
@@ -73,13 +73,13 @@ const result = await verifierContract.verifyKZG(
 )
 ```
 
-## Solidity verifier contract
+## Solidity contract
 
-The repository contains a Solidity contract with a `verifyKZG()` function which
+The repository contains a Solidity contract with a `verify()` function which
 performs on-chain proof verification for single-point proofs:
 
 ```sol
-function verifyKZG(
+function verify(
     uint256 _commitmentX,
     uint256 _commitmentY,
     uint256 _proofX,
@@ -90,6 +90,37 @@ function verifyKZG(
 ```
 
 It consumes about 178078 gas when called by a contract.
+
+It also provides a `commit()` function which can generate KZG commitments for
+up to 128 coefficients. This function is indended for multi-point proof
+verification.
+
+| Coefficients | Execution cost |
+|-|-|
+| 1 | 45700 |
+| 2 | 90087 |
+| 3 | 134474 |
+
+This works out to `44387 * n + 1313` gas to compute a commtment to `n`
+coefficients.
+
+Multi-point proof verification consumes the following gas per point:
+
+| Points | Cost | % Savings |
+|-|-|-|
+| 1 | 193084 | -8 |
+| 2 | 221505 | 38 |
+| 3 | 250283 | 53 |
+| 4 | 280075 | 61 |
+| 5 | 310152 | 65 |
+| 6 | 341279 | 68 |
+| 7 | 372763 | 70 |
+| 8 | 405237 | 72 |
+| 9 | 438008 | 73 |
+| 50 | 2368081 | 73 |
+| 75 | 4098829 | 69 |
+| 100 | 6245670 | 65 |
+| 128 | 9145327 | 60 |
 
 ## Try it out
 

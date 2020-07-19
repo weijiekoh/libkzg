@@ -1,176 +1,30 @@
 // Modified from https://github.com/appliedzkp/semaphore/blob/master/contracts/sol/verifier.sol
-
+pragma experimental ABIEncoderV2;
 pragma solidity ^0.5.0;
 
-library Pairing {
+import "./Pairing.sol";
+import { Constants } from "./Constants.sol";
 
-    uint256 constant PRIME_Q = 21888242871839275222246405745257275088696311157297823662689037894645226208583;
-
-    struct G1Point {
-        uint256 X;
-        uint256 Y;
-    }
-
-    // Encoding of field elements is: X[0] * z + X[1]
-    struct G2Point {
-        uint256[2] X;
-        uint256[2] Y;
-    }
-
-    /*
-     * @return The negation of p, i.e. p.plus(p.negate()) should be zero. 
-     */
-    function negate(G1Point memory p) internal pure returns (G1Point memory) {
-
-        // The prime q in the base field F_q for G1
-        if (p.X == 0 && p.Y == 0) {
-            return G1Point(0, 0);
-        } else {
-            return G1Point(p.X, PRIME_Q - (p.Y % PRIME_Q));
-        }
-    }
-
-    /*
-     * @return The sum of two points of G1
-     */
-    function plus(
-        G1Point memory p1,
-        G1Point memory p2
-    ) internal view returns (G1Point memory r) {
-
-        uint256[4] memory input;
-        input[0] = p1.X;
-        input[1] = p1.Y;
-        input[2] = p2.X;
-        input[3] = p2.Y;
-        bool success;
-
-        // solium-disable-next-line security/no-inline-assembly
-        assembly {
-            success := staticcall(sub(gas, 2000), 6, input, 0xc0, r, 0x60)
-            // Use "invalid" to make gas estimation work
-            switch success case 0 { invalid() }
-        }
-
-        require(success, "pairing-add-failed");
-    }
-
-    /*
-     * @return The product of a point on G1 and a scalar, i.e.
-     *         p == p.scalar_mul(1) and p.plus(p) == p.scalar_mul(2) for all
-     *         points p.
-     */
-    function mulScalar(G1Point memory p, uint256 s) internal view returns (G1Point memory r) {
-
-        uint256[3] memory input;
-        input[0] = p.X;
-        input[1] = p.Y;
-        input[2] = s;
-        bool success;
-        // solium-disable-next-line security/no-inline-assembly
-        assembly {
-            success := staticcall(sub(gas, 2000), 7, input, 0x80, r, 0x60)
-            // Use "invalid" to make gas estimation work
-            switch success case 0 { invalid() }
-        }
-        require (success, "pairing-mul-failed");
-    }
-
-    /* @return The result of computing the pairing check
-     *         e(p1[0], p2[0]) *  .... * e(p1[n], p2[n]) == 1
-     *         For example,
-     *         pairing([P1(), P1().negate()], [P2(), P2()]) should return true.
-     */
-    function pairing(
-        G1Point memory a1,
-        G2Point memory a2,
-        G1Point memory b1,
-        G2Point memory b2
-    ) internal view returns (bool) {
-
-        G1Point[2] memory p1 = [a1, b1];
-        G2Point[2] memory p2 = [a2, b2];
-
-        uint256 inputSize = 12;
-        uint256[] memory input = new uint256[](inputSize);
-
-        for (uint256 i = 0; i < 2; i++) {
-            uint256 j = i * 6;
-            input[j + 0] = p1[i].X;
-            input[j + 1] = p1[i].Y;
-            input[j + 2] = p2[i].X[0];
-            input[j + 3] = p2[i].X[1];
-            input[j + 4] = p2[i].Y[0];
-            input[j + 5] = p2[i].Y[1];
-        }
-
-        uint256[1] memory out;
-        bool success;
-
-        // solium-disable-next-line security/no-inline-assembly
-        assembly {
-            success := staticcall(sub(gas, 2000), 8, add(input, 0x20), mul(inputSize, 0x20), out, 0x20)
-            // Use "invalid" to make gas estimation work
-            switch success case 0 { invalid() }
-        }
-
-        require(success,"pairing-opcode-failed");
-
-        return out[0] != 0;
-    }
-}
-
-contract Verifier {
+contract Verifier is Constants {
 
     using Pairing for *;
 
-    uint256 constant BABYJUB_P = 21888242871839275222246405745257275088548364400416034343698204186575808495617;
+    // The G1 generator
+    Pairing.G1Point SRS_G1_0 = Pairing.G1Point({
+        X: Constants.SRS_G1_X[0],
+        Y: Constants.SRS_G1_Y[0]
+    });
 
+    // The G2 generator
     Pairing.G2Point g2Generator = Pairing.G2Point({
-        X: [
-            uint256(0x198e9393920d483a7260bfb731fb5d25f1aa493335a9e71297e485b7aef312c2), 
-            uint256(0x1800deef121f1e76426a00665e5c4479674322d4f75edadd46debd5cd992f6ed) 
-        ],
-        Y: [
-            uint256(0x090689d0585ff075ec9e99ad690c3395bc4b313370b38ef355acdadcd122975b),
-            uint256(0x12c85ea5db8c6deb4aab71808dcb408fe3d1e7690c43d37b4ce6cc0166fa7daa) 
-        ]
+        X: [ Constants.SRS_G2_X_0[0], Constants.SRS_G2_X_1[0] ],
+        Y: [ Constants.SRS_G2_Y_0[0], Constants.SRS_G2_Y_1[0] ]
 
     });
 
-    Pairing.G1Point SRS_G1_0 = Pairing.G1Point({ X: 1, Y: 2 });
-
-    /*
-     * This value is the second TauG2 value from challenge file #46 of the
-     * Perpetual Powers of Tau ceremony. The Blake2b hash of challenge file
-     * is:
-     *
-     * 939038cd 2dc5a1c0 20f368d2 bfad8686 
-     * 950fdf7e c2d2e192 a7d59509 3068816b
-     * becd914b a293dd8a cb6d18c7 b5116b66 
-     * ea54d915 d47a89cc fbe2d5a3 444dfbed
-     *
-     * The challenge file can be retrieved at:
-     * https://ppot.blob.core.windows.net/public/challenge_0046
-     *
-     * The ceremony transcript can be retrieved at:
-     * https://github.com/weijiekoh/perpetualpowersoftau
-     *
-     * Anyone can verify the transcript to ensure that the values in the challenge
-     * file have not been tampered with. Moreover, as long as one participant in
-     * the ceremony has discarded their toxic waste, the whole ceremony is secure.
-     * Please read the following for more information:
-     * https://medium.com/coinmonks/announcing-the-perpetual-powers-of-tau-ceremony-to-benefit-all-zk-snark-projects-c3da86af8377
-     */
     Pairing.G2Point SRS_G2_1 = Pairing.G2Point({
-        X: [
-            uint256(0x21a808dad5c50720fb7294745cf4c87812ce0ea76baa7df4e922615d1388f25a),
-            uint256(0x04c5e74c85a87f008a2feb4b5c8a1e7f9ba9d8eb40eb02e70139c89fb1c505a9) 
-        ],
-        Y: [
-            uint256(0x204b66d8e1fadc307c35187a6b813be0b46ba1cd720cd1c4ee5f68d13036b4ba),
-            uint256(0x2d58022915fc6bc90e036e858fbc98055084ac7aff98ccceb0e3fde64bc1a084) 
-        ]
+        X: [ Constants.SRS_G2_X_0[1], Constants.SRS_G2_X_1[1] ],
+        Y: [ Constants.SRS_G2_Y_0[1], Constants.SRS_G2_Y_1[1] ]
     });
 
     /*
@@ -180,30 +34,27 @@ contract Verifier {
      *    - _value = p(_index) 
      *    - commitment = commit(p)
      *    - proof = genProof(p, _index, _value)
-     * Returns true if and only if the following holds:
+     * Returns true if and only if the following holds, and returns false
+     * otherwise:
      *     e(commitment - commit([_value]), G2.g) == e(proof, commit([0, 1]) - zCommit)
-     * @param _commitmentX The X-coordinate of the commitment.
-     * @param _commitmentY The Y-coordinate of the commitment.
-     * @param _proofX The X-coordinate of the proof.
-     * @param _proofY The Y-coordinate of the proof.
+     * @param _commitment The KZG polynominal commitment.
+     * @param _proof The proof.
      * @param _index The x-value at which to evaluate the polynominal.
      * @param _value The result of the polynominal evaluation.
      */
-    function verifyKZG(
-        uint256 _commitmentX,
-        uint256 _commitmentY,
-        uint256 _proofX,
-        uint256 _proofY,
+    function verify(
+        Pairing.G1Point memory _commitment,
+        Pairing.G1Point memory _proof,
         uint256 _index,
         uint256 _value
     ) public view returns (bool) {
         // Make sure each parameter is less than the prime q
-        require(_commitmentX < BABYJUB_P, "Verifier.verifyKZG: commitmentX is out of range");
-        require(_commitmentY < BABYJUB_P, "Verifier.verifyKZG: commitmentY is out of range");
-        require(_proofX < BABYJUB_P, "Verifier.verifyKZG: proofX is out of range");
-        require(_proofY < BABYJUB_P, "Verifier.verifyKZG: proofY is out of range");
-        require(_index < BABYJUB_P, "Verifier.verifyKZG: index is out of range");
-        require(_value < BABYJUB_P, "Verifier.verifyKZG: value is out of range");
+        require(_commitment.X < BABYJUB_P, "Verifier.verifyKZG: _commitment.X is out of range");
+        require(_commitment.Y < BABYJUB_P, "Verifier.verifyKZG: _commitment.Y is out of range");
+        require(_proof.X < BABYJUB_P, "Verifier.verifyKZG: _proof.X is out of range");
+        require(_proof.Y < BABYJUB_P, "Verifier.verifyKZG: _proof.Y is out of range");
+        require(_index < BABYJUB_P, "Verifier.verifyKZG: _index is out of range");
+        require(_value < BABYJUB_P, "Verifier.verifyKZG: _value is out of range");
 
         // Check that 
         //     e(commitment - aCommit, G2.g) == e(proof, xCommit - zCommit)
@@ -225,24 +76,17 @@ contract Verifier {
 
         // Compute commitment - aCommitment
         Pairing.G1Point memory commitmentMinusA = Pairing.plus(
-            Pairing.G1Point({ X: _commitmentX, Y: _commitmentY }),
+            _commitment,
             Pairing.negate(
                 Pairing.mulScalar(SRS_G1_0, _value)
             )
         );
 
-        // The proof as a G1 point
-        Pairing.G1Point memory proofPoint = 
-            Pairing.G1Point({
-                X: _proofX,
-                Y: _proofY
-            });
-
         // Negate the proof
-        Pairing.G1Point memory negProof = Pairing.negate(proofPoint);
+        Pairing.G1Point memory negProof = Pairing.negate(_proof);
 
         // Compute index * proof
-        Pairing.G1Point memory indexMulProof = Pairing.mulScalar(proofPoint, _index);
+        Pairing.G1Point memory indexMulProof = Pairing.mulScalar(_proof, _index);
 
         // Returns true if and only if
         // e((index * proof) + (commitment - aCommitment), G2.g) * e(-proof, xCommit) == 1
@@ -253,4 +97,144 @@ contract Verifier {
             SRS_G2_1
         );
     }
+
+    /*
+     * @return A KZG commitment to a polynominal
+     * @param coefficients The coefficients of the polynomial to which to
+     *                     commit.
+     */
+    function commit(
+        uint256[] memory coefficients
+    ) public view returns (Pairing.G1Point memory) {
+
+        Pairing.G1Point memory result = Pairing.G1Point(0, 0);
+
+        for (uint256 i = 0; i < coefficients.length; i ++) {
+            result = Pairing.plus(
+                result,
+                Pairing.mulScalar(
+                    Pairing.G1Point({
+                        X: Constants.SRS_G1_X[i],
+                        Y: Constants.SRS_G1_Y[i]
+                    }),
+                    coefficients[i]
+                )
+            );
+        }
+        return result;
+    }
+
+    /*
+     * @return The polynominal evaluation of a polynominal with the specified
+     *         coefficients at the given index.
+     */
+    function evalPolyAt(
+        uint256[] memory _coefficients,
+        uint256 _index
+    ) public pure returns (uint256) {
+
+        uint256 m = Constants.BABYJUB_P;
+        uint256 result = 0;
+        uint256 powerOfX = 1;
+
+        for (uint256 i = 0; i < _coefficients.length; i ++) {
+            uint256 coeff = _coefficients[i];
+            assembly {
+                result:= addmod(result, mulmod(powerOfX, coeff, m), m)
+                powerOfX := mulmod(powerOfX, _index, m)
+            }
+        }
+        return result;
+    }
+    
+    /*
+     * Verifies the evaluation of multiple points of a polynominal using the
+     * KZG commitment scheme.
+     *    - p(X) is a polynominal
+     *    - commitment = commit(p)
+     *    - For each y in _values and each x in _indices, y = p(x)
+     *    - proof = genMultiProof(p, _indices)
+     * Returns true if and only if the following holds, and returns false
+     * otherwise:
+     *     e(-commit(zPoly), proof) * e(commitment - commit(iPoly), g) == 1
+     * @param _commitment The polynominal commitment.
+     * @param _proof The proof.
+     * @param _indices The x-values at which to evaluate the polynominal.
+     * @param _values The evaluation of the polynominal at each index.
+     * @param _iCoeffs The coefficients of a polynominal which interpolates
+     *                 each index and corresponding y-value.
+     * @param _zCoeffs The coefficients of a polynominal which intersects y=0
+     *                 for each index.
+     */
+    function verifyMulti(
+        Pairing.G1Point memory _commitment,
+        Pairing.G2Point memory _proof,
+        uint256[] memory _indices,
+        uint256[] memory _values,
+        uint256[] memory _iCoeffs,
+        uint256[] memory _zCoeffs
+    ) public view returns (bool) {
+        // Perform range checks
+        require(_commitment.X < BABYJUB_P, "Verifier.verifyMultiKZG: _commitment.X is out of range");
+        require(_commitment.Y < BABYJUB_P, "Verifier.verifyMultiKZG: _commitment.Y is out of range");
+        require(_proof.X[0] < BABYJUB_P, "Verifier.verifyKZG: _proof.X[0] is out of range");
+        require(_proof.X[1] < BABYJUB_P, "Verifier.verifyKZG: _proof.X[1] is out of range");
+        require(_proof.Y[0] < BABYJUB_P, "Verifier.verifyKZG: _proof.Y[0] is out of range");
+        require(_proof.Y[1] < BABYJUB_P, "Verifier.verifyKZG: _proof.Y[1] is out of range");
+
+        for (uint256 i = 0; i < _iCoeffs.length; i ++) {
+            require(_iCoeffs[i] < BABYJUB_P, "Verifier.verifyKZG: an _iCoeffs value is out of range");
+        }
+
+        for (uint256 i = 0; i < _zCoeffs.length; i ++) {
+            require(_zCoeffs[i] < BABYJUB_P, "Verifier.verifyKZG: an _zCoeffs value is out of range");
+        }
+
+        // Check whether _iCoeffs and _zCoeffs are valid
+        for (uint256 i = 0; i < _indices.length; i ++) {
+            uint256 index = _indices[i];
+            uint256 value = _values[i];
+            require(index < BABYJUB_P, "Verifier.verifyKZG: an index is out of range");
+            require(value < BABYJUB_P, "Verifier.verifyKZG: a value is out of range");
+
+            uint256 zEval = evalPolyAt(_zCoeffs, _indices[i]);
+            require(zEval == 0, "Verifier.verifyMulti: invalid _zCoeffs");
+
+            uint256 iEval = evalPolyAt(_iCoeffs, _indices[i]);
+            require(iEval == _values[i], "Verifier.verifyMulti: invalid _iCoeffs");
+        }
+
+        // Generate the KZG commitments to the i and z polynominals
+        Pairing.G1Point memory zCommit = commit(_zCoeffs);
+        Pairing.G1Point memory iCommit = commit(_iCoeffs);
+
+        // Compute commitment - commit(iPoly)
+        Pairing.G1Point memory commitmentMinusICommit =
+            Pairing.plus(
+                _commitment,
+                Pairing.negate(iCommit)
+            );
+
+        // Perform the pairing check
+        return Pairing.pairing(
+            Pairing.negate(zCommit),
+            _proof,
+            commitmentMinusICommit,
+            g2Generator
+        );
+    }
+
+    /*
+    // Uncomment to perform gas benchmarks
+    function verifyMultiBenchmark(
+        Pairing.G1Point memory _commitment,
+        Pairing.G2Point memory _proof,
+        uint256[] memory _indices,
+        uint256[] memory _values,
+        uint256[] memory _iCoeffs,
+        uint256[] memory _zCoeffs
+    ) public {
+        verifyMulti(_commitment, _proof, _indices, _values, _iCoeffs, _zCoeffs);
+    }
+    */
 }

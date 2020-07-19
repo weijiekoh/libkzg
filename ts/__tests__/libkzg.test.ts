@@ -9,6 +9,7 @@ import {
     verifyViaEIP197,
     isValidPairing,
     genVerifierContractParams,
+    genMultiVerifierContractParams,
     genBabyJubField,
     commit,
     genZeroPoly,
@@ -269,7 +270,7 @@ describe('libkzg', () => {
 
     describe('multiproofs', () => {
         let multiProof
-        const indices = [2, 1].map(BigInt)
+        const indices = [2, 1, 3].map(BigInt)
         const values = indices.map((x) => field.evalPolyAt(field.newVectorFrom(coefficients), x))
         const commitment = commit(coefficients)
 

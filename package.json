@@ -7,7 +7,7 @@
     "watch": "tsc --watch",
     "build": "tsc",
     "prepare": "npm run build",
-    "ganache": "etherlime ganache --port 8545 --gasLimit 95000000 --mnemonic 'candy maple cake sugar pudding cream honey rich smooth crumble sweet treat'",
+    "ganache": "etherlime ganache --port 8545 --gasLimit 10000000 --mnemonic 'candy maple cake sugar pudding cream honey rich smooth crumble sweet treat'",
     "test": "jest --force-exit libkzg.test.ts",
     "test-debug": "node --inspect-brk ./node_modules/.bin/jest --testPathPattern=__tests__/libkzg.test.ts",
     "test-sol-verifier": "jest --force-exit solVerifier.test.ts",
