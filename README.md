@@ -14,7 +14,7 @@ proof.
 
 Given a list of arbitrary values, use polynominal interpolation to generate the
 coefficients of a polynominal to commit. Each value must be lower than the
-BabyJub field size:
+BN254 scalar field order:
 
 `21888242871839275222246405745257275088548364400416034343698204186575808495617`
 
